@@ -1,11 +1,17 @@
 module Main where
 
 import Data.List ( groupBy )
-import Data.Char ( isDigit, isAlpha, isSpace )
+import Data.Char ( isDigit, isAlpha )
 data Token = Atom Float | Func (Float -> Float) | Op (Float -> Float -> Float ) | Bracket Char
 
 parser :: String -> [Token]
-parser = map parseToken . filter (/= " ") . groupBy (\x y -> (isDigit x && isDigit y) || (isAlpha x && isAlpha y) || (isDigit x && y == '.')) 
+parser = map parseToken . filter (/= " ") . negNum [] . grouper
+      where grouper =  groupBy (\x y -> (isDigit x && isDigit y) || (isAlpha x && isAlpha y) || (isDigit x && y == '.'))
+
+negNum :: [String] -> [String] -> [String]
+negNum out ("-" : y : xs) = negNum (("-" ++ y) : "+" : "0" : out) xs
+negNum out (x : xs) = negNum (x : out) xs
+negNum out [] = reverse out 
 
 parseToken :: [Char] -> Token
 parseToken x 
@@ -58,10 +64,10 @@ opsPriority x = 0
 toNum :: Token -> Float 
 toNum (Atom x) = x
 
-evaluater :: String -> Maybe Float 
-evaluater [] = Nothing 
-evaluater xs = Just ((toNum . solveRPN) (shuntingYard (parser xs) [] []))
+evaluator :: String -> Maybe Float 
+evaluator [] = Nothing 
+evaluator xs = Just ((toNum . solveRPN) (shuntingYard (parser xs) [] []))
 
 main :: IO ()     
 main = do
-      print ( evaluater "1")
+      print ( evaluator "ln(-1+2)")

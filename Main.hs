@@ -1,8 +1,10 @@
 module Main where
 
-import Data.List ( groupBy )
+import Data.List ( groupBy, all )
 import Data.Char ( isDigit, isAlpha )
-data Token = Atom Float | Func (Float -> Float) | Op (Float -> Float -> Float ) | Bracket Char
+data Token = Atom Var | Func (Float -> Float) | Op (Float -> Float -> Float ) | Bracket Char
+
+data Var = AtomNum Float | AtomVar String
 
 parser :: String -> [Token]
 parser = map parseToken . filter (/= " ") . negNum [] . grouper
@@ -25,12 +27,13 @@ parseToken x
       | x == "sin" = Func sin
       | x == "(" =  Bracket '('
       | x == ")" =  Bracket ')'
-      | otherwise  = Atom (read x)
+      | all isAlpha x = (Atom . AtomVar) x
+      | otherwise   = (Atom . AtomNum . read) x
 
 -- shuntingYard :: input queue -> output queue -> operators stack -> output queue in rpn
 shuntingYard :: [Token] -> [Token] -> [Token] -> [Token]
-shuntingYard (Atom n : xs) out ops = shuntingYard xs (Atom n : out) ops
-shuntingYard (Func f : Atom n : xs) out ops = shuntingYard xs ((Atom . f) n : out) ops
+shuntingYard (Atom (AtomNum n) : xs) out ops = shuntingYard xs (Atom (AtomNum n) : out) ops
+shuntingYard (Func f : Atom (AtomNum n) : xs) out ops = shuntingYard xs ((Atom . AtomNum . f) n : out) ops
 shuntingYard (Func f : xs) out ops = shuntingYard xs out (Func f : ops)
 shuntingYard (Op op1 : xs) out (x : ops) = if (opsPriority . Op) op1 <= opsPriority x then shuntingYard (Op op1 : xs) (x : out) ops
                                                 else shuntingYard xs out (Op op1 : x : ops)
@@ -43,8 +46,8 @@ shuntingYard [] out [] = reverse out
 
 solveRPN :: [Token] -> Token 
 solveRPN = head . foldl foldingFunction []  
-    where   foldingFunction (Atom x1 : xs) (Func func) = Atom (func x1) : xs
-            foldingFunction (Atom x1 : Atom x2 : xs) (Op op) = Atom (op x2 x1) : xs
+    where   foldingFunction (Atom (AtomNum x1) : xs) (Func func) = (Atom . AtomNum . func) x1 : xs
+            foldingFunction (Atom (AtomNum x1) : Atom (AtomNum x2) : xs) (Op op) = (Atom . AtomNum) (op x2 x1) : xs
             foldingFunction xs ys = ys : xs
 
 bracketEQ :: Char -> Token -> Bool 
@@ -62,7 +65,7 @@ opsPriority (Func f) = 4
 opsPriority x = 0
 
 toNum :: Token -> Float 
-toNum (Atom x) = x
+toNum (Atom (AtomNum x)) = x
 
 evaluator :: String -> Maybe Float 
 evaluator [] = Nothing 

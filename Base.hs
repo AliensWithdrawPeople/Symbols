@@ -8,7 +8,8 @@
 module Base 
 ( parser
 , evaluator
-, exprShow) where
+, exprShow
+, Token) where
 
 import Data.List ( groupBy, all )
 import Data.Char ( isDigit, isAlpha )
@@ -25,7 +26,7 @@ instance Show Token where
       show x = tokenShow x
 
 parser :: String -> [Token]
-parser = map parseToken . filter (/= " ") . negNum [] . grouper
+parser = map parseToken . negNum [] . filter (/= " ") . grouper
       where grouper =  groupBy (\x y -> (isDigit x && isDigit y) || (isAlpha x && isAlpha y) || (isDigit x && y == '.'))
 
 parseToken :: [Char] -> Token
@@ -40,7 +41,7 @@ parseToken x
       | x == "sin" = Func sin
       | x == "(" =  Bracket '('
       | x == ")" =  Bracket ')'
-      | all isAlpha x = (Atom . Var) x
+      | any isAlpha x = (Atom . Var) x
       | otherwise   = (Atom . Number . read) x
 
 -- shuntingYard :: input queue -> output queue -> operators stack -> output queue in rpn
@@ -82,12 +83,15 @@ tokenShow (Op op)
 tokenShow (Func f)
       | f 2 == log 2 = " ln"
       | f 2 == sin 2 = " sin"
-tokenShow (Bracket x) = " " ++ (x : " ")
+tokenShow (Bracket x) = x : " "
 tokenShow (Atom (Number x)) = show x
 tokenShow (Atom (Var x)) = x
 
 negNum :: [String] -> [String] -> [String]
-negNum out ("-" : y : xs) = negNum (("-" ++ y) : "+" : "0" : out) xs
+negNum [] ("-" : "(" : xs) = negNum ["(", "*", "-1", "+", "0"] xs
+negNum out ("-" : "(" : xs) = negNum ("(" : "*" : "-1" : "+" : "0" : "+" : out) xs
+negNum [] ("-" : y : xs) = negNum ["-" ++ y, "+", "0"] xs
+negNum out ("-" : y : xs) = negNum (("-" ++ y) : "+" : "0" : "+" : out) xs
 negNum out (x : xs) = negNum (x : out) xs
 negNum out [] = reverse out
 
@@ -109,4 +113,12 @@ varCheck (Atom (Var x)) = True
 varCheck x = False
 
 exprShow :: [Token] -> String 
-exprShow = concatMap show
+exprShow = concat . foo [] .  map show
+
+foo :: [String] -> [String] -> [String] 
+foo ys ("0.0" : xs) = foo ys xs
+foo ys (x1 : "0.0" : xs) = foo ys xs
+foo ys (" + " : x2 : xs) = if head x2 == '-' then foo ys ((" " ++ x2) : xs) 
+                        else foo (" + " : ys) (x2 : xs)
+foo ys (x1 : xs) = foo (x1 : ys) xs
+foo xs [] = reverse xs

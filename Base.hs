@@ -7,6 +7,7 @@
 
 module Base 
 ( parser
+, parser'
 , evaluator
 , exprShow
 , Token) where
@@ -26,7 +27,10 @@ instance Show Token where
       show x = tokenShow x
 
 parser :: String -> [Token]
-parser = map parseToken . negNum [] . filter (/= " ") . grouper
+parser = map parseToken . parser'
+
+parser' :: String -> [String]
+parser' = negNum [] . filter (/= " ") . grouper
       where grouper =  groupBy (\x y -> (isDigit x && isDigit y) || (isAlpha x && isAlpha y) || (isDigit x && y == '.'))
 
 parseToken :: [Char] -> Token
@@ -39,6 +43,7 @@ parseToken x
       | x == "ln" = Func log
       | x == "log" = Func log
       | x == "sin" = Func sin
+      | x == "cos" = Func cos
       | x == "(" =  Bracket '('
       | x == ")" =  Bracket ')'
       | any isAlpha x = (Atom . Var) x
@@ -83,6 +88,7 @@ tokenShow (Op op)
 tokenShow (Func f)
       | f 2 == log 2 = " ln"
       | f 2 == sin 2 = " sin"
+      | f 2 == cos 2 = " cos"
 tokenShow (Bracket x) = x : " "
 tokenShow (Atom (Number x)) = show x
 tokenShow (Atom (Var x)) = x

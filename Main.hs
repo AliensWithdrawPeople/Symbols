@@ -1,9 +1,8 @@
 module Main where
 
-import Data.List ( groupBy, all )
-import Data.Char ( isDigit, isAlpha )
 import Base (parser, evaluator, exprShow)
+import Equations (eqPars)
 
 main :: IO ()     
 main = do
-      print ( (evaluator . exprShow . parser) "1-(1+2)")
+      print ( eqPars "x^2 - 1 + 2")

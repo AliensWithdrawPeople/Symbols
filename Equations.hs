@@ -1,6 +1,9 @@
-module Equations where
+module Equations 
+( eqPars
+) where
 
-import Base (parser, Token)
+import Base (parser, parser', Token)
+import Data.List.Split.Internals (splitOn)
 
-simplifier :: [Token] -> [Token]
-simplifier x = x
+eqPars :: String -> [String] 
+eqPars =  splitOn "+" . filter (/= ' ')

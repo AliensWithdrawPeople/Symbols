@@ -5,4 +5,4 @@ import Equations (eqPars)
 
 main :: IO ()     
 main = do
-      print ( eqPars "x^2 - 1 + 2")
+      print ( eqPars "x^3 - 1 + 2")

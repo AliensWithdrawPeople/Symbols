@@ -3,7 +3,7 @@ module Equations
 ) where
 
 import Base (parser, parser', Token)
-import Data.List.Split.Internals (splitOn)
+import Data.List.Split.Internals (split, oneOf)
 
 eqPars :: String -> [String] 
-eqPars =  splitOn "+" . filter (/= ' ')
+eqPars =  split (oneOf "^*/+-") . filter (/= ' ')

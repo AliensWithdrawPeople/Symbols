@@ -1,8 +1,8 @@
 module Main where
 
 import Base (parser, evaluator, exprShow)
-import Equations (eqPars)
+import Equations (linearEqPars)
 
 main :: IO ()     
 main = do
-      print ( eqPars "x^3 - 1 + 2")
+      print ( linearEqPars "x^4 + x^5 - 1 + 2")

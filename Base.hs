@@ -76,7 +76,7 @@ evaluator xs
       | otherwise  = Just $ (toNum . solveRPN) $ shuntingYard (parser xs) [] []
 
 
--- helper functions --
+-- Supporting functions
 
 tokenShow :: Token -> String 
 tokenShow (Op op)

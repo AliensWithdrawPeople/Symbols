@@ -5,4 +5,4 @@ import Equations (linearEqPars, simplify)
 
 main :: IO ()     
 main = do
-      print ( simplify . linearEqPars $ "5x^4/3 + x^5 - x^5 - 1 + 2")
+      print (simplify . linearEqPars $ "x^2 + 2x^1 + 1")

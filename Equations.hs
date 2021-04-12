@@ -5,23 +5,30 @@ module Equations
 
 import Base (evaluator, Token)
 import Data.List.Split.Internals (split, oneOf, keepDelimsL, dropInitBlank, onSublist)
-import Data.List (sortBy, elemIndex, takeWhile, dropWhile)
+import Data.List (sortBy, elemIndex, takeWhile, dropWhile, groupBy, sort)
 import Data.Char(isDigit)
+import Data.Function(on)
 
 -- Simplify block: start
 simplify :: [String] -> [(String, String)]
-simplify = map $ ev . separator . split (keepDelimsL . onSublist $ "x^")
+simplify = combine . a
+    where a = map $ evaluateFactor . separator . split (keepDelimsL . onSublist $ "x^")
 
-ev :: (String, String) -> (String, String)
-ev (first, second) 
-    | first == "+" || first == "-" = (first ++ "1.0", second)
+evaluateFactor :: (String, String) -> (String, String)
+evaluateFactor (first, second) 
+    | first == "+" = ("1.0", second)
+    | first == "-" = (first ++ "1.0", second)
     | head first == '+' || head first == '-' = ((show . maybeNumToNum . evaluator) ("0" ++ first), second)
     | otherwise  = (first, second)
 
+combine :: [(String, String)] -> [(String, String)]
+combine = filter (\x -> fst x /= "0.0") . map a . groupBy ((==) `on` snd)
+    where a [singleton] = singleton
+          a lst = foldr (\(accFirst, accSecond) (first, second) -> (show ((read accFirst :: Float) + (read first :: Float)), second)) ("0.0", (snd . head) lst) lst
 
 separator :: [String] -> (String, String)         
 separator [first, second] = (first ++ (dropWhile isDigit . drop 2) second, take 2 second ++ (takeWhile isDigit . drop 2) second)
-separator [first] = (first, "x^0") -- (show . evaluator)
+separator [first] = (first, "x^0")
 -- Simplify block: end
 
 -- Linear Equation Parser block: start

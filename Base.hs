@@ -7,7 +7,6 @@
 
 module Base 
 ( parser
-, parser'
 , evaluator
 , exprShow
 , Token) where

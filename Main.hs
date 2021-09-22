@@ -1,8 +1,8 @@
 module Main where
 
 import Base (evaluator)
-import Equations (linearEqPars, simplify)
+import Equations (linearEq)
 
 main :: IO ()     
 main = do
-      print ( simplify . linearEqPars $ "-(5+5)*x^2 + 2x + 1 + 2*3")
+      print (linearEq "3 + x^2 + 5x^3 + x = x^2")

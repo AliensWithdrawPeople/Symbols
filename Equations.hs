@@ -14,6 +14,7 @@ import Data.List.Split.Internals (split, oneOf, dropDelims, keepDelimsL, dropIni
 import Data.List (sortBy, elemIndex, takeWhile, dropWhile, groupBy, sort)
 import Data.Char(isDigit)
 import Data.Function(on)
+import Data.Complex ()
 
 data Expression = Poly [Member] | Shitty [String] 
 instance Show Expression where

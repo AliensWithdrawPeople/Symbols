@@ -1,9 +1,9 @@
 module Main where
 
 import Base (evaluator)
-import Equations (linearEq)
+import Equations (linearEq, toFunc, at)
 
 
 main :: IO ()     
 main = do
-      print (linearEq "3 + x^2 + 5x^3 + x = x^2")
+      print ((toFunc "x^5 + 4x^4 + 8x^3 + 8x") `at` 2)

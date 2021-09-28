@@ -7,6 +7,8 @@
 
 module Equations
 ( linearEq
+, toFunc
+, at
 ) where
 
 import Base (evaluator)
@@ -14,30 +16,46 @@ import Data.List.Split.Internals (split, oneOf, dropDelims, keepDelimsL, dropIni
 import Data.List (sortBy, elemIndex, takeWhile, dropWhile, groupBy, sort)
 import Data.Char(isDigit)
 import Data.Function(on)
-import Data.Complex ()
+import Data.Complex (Complex) 
 
-data Expression = Poly [Member] | Shitty [String] 
-instance Show Expression where
-      show x = eqShow x
+data Func = Poly [Member] -- Add more
+instance Show Func where
+      show = funcShow
+
+at :: Func -> Float -> Float
+at x a = snd (foldToTuple x a)
+
+foldToTuple :: Func -> Float -> Member
+foldToTuple (Poly x) a = foldr (\xx acc -> (0, snd acc + fst xx * (a ** snd xx))) (0, 0) x
+
 type Member =  (Float, Float)
+type Root = [Complex Float]
 
 -- Users functions
-linearEq :: String -> Expression
-linearEq = simplify . linearEqPars 
+linearEq :: String -> Func
+linearEq = Poly . normalization . simplify . linearEqPars
+    where normalization lst = map (\x -> (fst x / (fst . head) lst, snd x)) lst
+
+toFunc :: String -> Func
+toFunc = Poly . simplify . funcPars
 
 --Linear equation block: start
--- polynomialEquation :: String -> Float -> Float 
--- polynomialEquation = solver . simplify . linearEqPars
 
--- solver :: [(Float , Float)] -> Float -> Float 
--- solver lst x = foldl (\x) b (t a)
+{- polynomialEquation :: Func -> [Root]
+polynomialEquation = solver . simplify . linearEqParss -}
+
+{- p0 = 0.4 :+ 0.9
+
+solver :: Poly -> [Root] -> [Root] 
+solver x [p0, p0, p0, p0] = solver x []
+    where nextStep x p = -}  
 
 --Linear equation block: end
 
 -- Simplify block: start
-simplify :: [String] -> Expression
-simplify lst = Poly (simply lst)  
-    where simply = map (\x -> (read . fst $ x, read . snd $ x) ) . combine . map (evaluateFactor . separator . split (keepDelimsL . onSublist $ "x^"))
+simplify :: [String] -> [Member]
+simplify = map (\x -> (read . fst $ x, read . snd $ x) ) . combine .
+                    map (evaluateFactor . separator . split (keepDelimsL . onSublist $ "x^"))
 
 evaluateFactor :: (String, String) -> (String, String)
 evaluateFactor (first, second)
@@ -62,12 +80,12 @@ separator [first]
 
 -- Linear Equation Parser block: start
 linearEqPars :: String -> [String]
-linearEqPars = concat . minusToSecond . map expressionParse . split (dropDelims . onSublist $"=")
+linearEqPars = concat . minusToSecond . map funcPars . split (dropDelims . onSublist $"=")
     where minusToSecond lst = [head lst, map minus $last lst]
           minus str = '-' : tail str
 
-expressionParse :: String -> [String]
-expressionParse = sortBy comp . split' [] . firstSign . filter (/= ' ') where
+funcPars :: String -> [String]
+funcPars = sortBy comp . split' [] . firstSign . filter (/= ' ') where
     firstSign str
         | (head str /= '-') && (head str /= '+') = '+' : str
         | otherwise = str
@@ -104,10 +122,8 @@ maybeNumToNum :: (Num t) => Maybe t -> t
 maybeNumToNum (Just n) = n
 maybeNumToNum Nothing = 0
 
-eqShow :: Expression -> String
-eqShow (Poly pol) = concatMap memberToString pol ++ " = 0" where 
-    memberToString memb 
-        | fst memb >= 0  = "+" ++ show (fst memb) ++ "*x^" ++ show (snd memb)
-        | fst memb < 0  = show (fst memb) ++ "*x^" ++ show (snd memb)
--- TODO
-eqShow (Shitty sh) = "I can't show you this 'cause it's not ready yet."
+funcShow :: Func -> String
+funcShow (Poly pol) = concatMap memberToString pol ++ " = 0" where
+    memberToString memb
+        | fst memb >= 0  = " + " ++ show (fst memb) ++ " * x^" ++ show (snd memb)
+        | fst memb < 0  = show (fst memb) ++ " * x^" ++ show (snd memb)

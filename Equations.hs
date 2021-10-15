@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 -- Module      : Symbols.Equation
 -- Copyright   : (c) Daniel Ivanov 2021
 -- License     : MIT
@@ -16,20 +17,21 @@ import Data.List.Split.Internals (split, oneOf, dropDelims, keepDelimsL, dropIni
 import Data.List (sortBy, elemIndex, takeWhile, dropWhile, groupBy, sort)
 import Data.Char(isDigit)
 import Data.Function(on)
-import Data.Complex (Complex) 
+import Data.Complex
+
+-- (Multiplier, power)
+type Member =  (Float, Float)
+type Root = Complex Float
 
 data Func = Poly [Member] -- Add more
 instance Show Func where
       show = funcShow
 
-at :: Func -> Float -> Float
+at :: Func -> Root -> Root
 at x a = snd (foldToTuple x a)
+    where foldToTuple (Poly x) a = foldr ((\xx acc -> (0, snd acc + fst xx * (a ** snd xx))) . toComplex) (0, 0) x
+          toComplex (n, p) = (n :+ 0.0, p :+ 0.0)
 
-foldToTuple :: Func -> Float -> Member
-foldToTuple (Poly x) a = foldr (\xx acc -> (0, snd acc + fst xx * (a ** snd xx))) (0, 0) x
-
-type Member =  (Float, Float)
-type Root = [Complex Float]
 
 -- Users functions
 linearEq :: String -> Func
@@ -42,13 +44,18 @@ toFunc = Poly . simplify . funcPars
 --Linear equation block: start
 
 {- polynomialEquation :: Func -> [Root]
-polynomialEquation = solver . simplify . linearEqParss -}
+polynomialEquation = solver . simplify . linearEqPars -}
 
-{- p0 = 0.4 :+ 0.9
+solver :: Func -> [Root]
+solver (Poly x) = newP (Poly x) [(0.4 :+ 0.9) ** (i :+ 0.0) | i <- [1 .. (snd . head) x]] []
 
-solver :: Poly -> [Root] -> [Root] 
-solver x [p0, p0, p0, p0] = solver x []
-    where nextStep x p = -}  
+newP :: Func -> [Root] -> [Root] -> [Root]
+newP (Poly x) [] lst1 = lst1
+newP (Poly x) lst [] =  newP (Poly x) (tail lst) 
+    [head lst - (Poly x `at` head lst) / foldr (\p acc -> (head lst - p) * acc) 1 (tail lst)]
+newP (Poly x) lst lst1 = newP (Poly x) (tail lst) 
+    [head lst -(Poly x `at` head lst) / foldr (\p acc -> (head lst - p) * acc) 1 lst1 * 
+        foldr (\p acc -> (head lst - p) * acc) 1 (tail lst)] ++ lst1
 
 --Linear equation block: end
 

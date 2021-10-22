@@ -10,6 +10,7 @@ module Equations
 ( linearEq
 , toFunc
 , at
+, polySolver
 ) where
 
 import Base (evaluator)
@@ -27,12 +28,6 @@ data Func = Poly [Member] -- Add more
 instance Show Func where
       show = funcShow
 
-at :: Func -> Root -> Root
-at x a = snd (foldToTuple x a)
-    where foldToTuple (Poly x) a = foldr ((\xx acc -> (0, snd acc + fst xx * (a ** snd xx))) . toComplex) (0, 0) x
-          toComplex (n, p) = (n :+ 0.0, p :+ 0.0)
-
-
 -- Users functions
 linearEq :: String -> Func
 linearEq = Poly . normalization . simplify . linearEqPars
@@ -41,25 +36,40 @@ linearEq = Poly . normalization . simplify . linearEqPars
 toFunc :: String -> Func
 toFunc = Poly . simplify . funcPars
 
---Linear equation block: start
+at :: Func -> Root -> Root
+at x a = snd (foldToTuple x a)
+    where foldToTuple (Poly x) a = foldr ((\xx acc -> (0, snd acc + fst xx * (a ** snd xx))) . toComplex) (0, 0) x
+          toComplex (n, p) = (n :+ 0.0, p :+ 0.0)
 
-{- polynomialEquation :: Func -> [Root]
-polynomialEquation = solver . simplify . linearEqPars -}
+polySolver :: String -> [Root]
+polySolver = durandKernerMethod . linearEq
 
-solver :: Func -> [Root]
-solver (Poly x) = newP (Poly x) [(0.4 :+ 0.9) ** (i :+ 0.0) | i <- [1 .. (snd . head) x]] []
+--Polynomial equation block
+durandKernerMethod :: Func -> [Root]
+durandKernerMethod (Poly x) = durandKernerMethod' (Poly x) 5 []
+
+durandKernerMethod' :: Func -> Double -> [Root] -> [Root]
+durandKernerMethod' (Poly x) 0 prevRoots = prevRoots
+durandKernerMethod' (Poly x) steps [] = durandKernerMethod' (Poly x) (steps - 1) (step (Poly x) p0)
+    where p0 = [(0.4 :+ 0.9) ** (i :+ 0.0) | i <- [1 .. (snd . head) x]]
+durandKernerMethod' (Poly x) steps prevRoots = durandKernerMethod' (Poly x) (steps - 1) (step (Poly x) prevRoots)
+
+-- In future durandKernerMethod will find roots with some precision eps.
+{- norm :: [Root] -> Double
+norm = foldr (\x acc -> magnitude x * magnitude x + acc) 0 -}
+
+step :: Func -> [Root] -> [Root]
+step (Poly x) prevRoots = newP (Poly x) prevRoots []
 
 newP :: Func -> [Root] -> [Root] -> [Root]
 newP (Poly x) [] lst1 = lst1
 newP (Poly x) lst [] =  newP (Poly x) (tail lst) 
     [head lst - (Poly x `at` head lst) / foldr (\p acc -> (head lst - p) * acc) 1 (tail lst)]
 newP (Poly x) lst lst1 = newP (Poly x) (tail lst) 
-    [head lst -(Poly x `at` head lst) / foldr (\p acc -> (head lst - p) * acc) 1 lst1 * 
-        foldr (\p acc -> (head lst - p) * acc) 1 (tail lst)] ++ lst1
+    [head lst - (Poly x `at` head lst) / 
+    (foldr (\p acc -> (head lst - p) * acc) 1 lst1 * foldr (\p acc -> (head lst - p) * acc) 1 (tail lst))] ++ lst1
 
---Linear equation block: end
-
--- Simplify block: start
+-- Simplify block
 simplify :: [String] -> [Member]
 simplify = map (\x -> (read . fst $ x, read . snd $ x) ) . combine .
                     map (evaluateFactor . separator . split (keepDelimsL . onSublist $ "x^"))
@@ -83,9 +93,8 @@ separator [first, second]
 separator [first]
     | last first == 'x' = (init first, "1")
     | otherwise = (first, "0")
--- Simplify block: end
 
--- Linear Equation Parser block: start
+-- Linear Equation Parser block
 linearEqPars :: String -> [String]
 linearEqPars = concat . minusToSecond . map funcPars . split (dropDelims . onSublist $"=")
     where minusToSecond lst = [head lst, map minus $last lst]
@@ -122,7 +131,6 @@ comp a b
     | otherwise = LT
     where degree = nextEl . split (oneOf "^")
           nextEl lst = read (lst !! (maybeNumToNum (elemIndex "^" lst) + 1)) :: Float
--- Linear Equation Parser block: end
 
 -- Supporting functions
 maybeNumToNum :: (Num t) => Maybe t -> t

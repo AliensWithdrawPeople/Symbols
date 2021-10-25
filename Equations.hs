@@ -41,33 +41,34 @@ at x a = snd (foldToTuple x a)
     where foldToTuple (Poly x) a = foldr ((\xx acc -> (0, snd acc + fst xx * (a ** snd xx))) . toComplex) (0, 0) x
           toComplex (n, p) = (n :+ 0.0, p :+ 0.0)
 
-polySolver :: String -> [Root]
-polySolver = durandKernerMethod . linearEq
+polySolver :: String -> Float -> [Root]
+polySolver str eps = durandKernerMethod eps . linearEq $str
 
 --Polynomial equation block
-durandKernerMethod :: Func -> [Root]
-durandKernerMethod (Poly x) = durandKernerMethod' (Poly x) 5 []
+durandKernerMethod :: Float -> Func -> [Root]
+-- Add check that all powers are integer!!!
+durandKernerMethod eps (Poly x) = durandKernerMethod' (Poly x) eps 20 []
 
-durandKernerMethod' :: Func -> Double -> [Root] -> [Root]
-durandKernerMethod' (Poly x) 0 prevRoots = prevRoots
-durandKernerMethod' (Poly x) steps [] = durandKernerMethod' (Poly x) (steps - 1) (step (Poly x) p0)
-    where p0 = [(0.4 :+ 0.9) ** (i :+ 0.0) | i <- [1 .. (snd . head) x]]
-durandKernerMethod' (Poly x) steps prevRoots = durandKernerMethod' (Poly x) (steps - 1) (step (Poly x) prevRoots)
+precisionCheck :: Func -> [Root] -> Float
+precisionCheck (Poly x) = foldr (\xx acc -> magnitude (Poly x `at` xx) + acc) 0
 
--- In future durandKernerMethod will find roots with some precision eps.
-{- norm :: [Root] -> Double
-norm = foldr (\x acc -> magnitude x * magnitude x + acc) 0 -}
+durandKernerMethod' :: Func -> Float -> Integer -> [Root] -> [Root]
+durandKernerMethod' (Poly x) eps steps [] = durandKernerMethod' (Poly x) eps (steps - 1) (step (Poly x) p0)
+    where p0 = [(0.4 :+ 0.9) ^ i | i <- [0 .. (round . snd . head) x - 1]]
+durandKernerMethod' (Poly x) eps steps prevRoots
+    | steps == 0 = prevRoots
+    | maximum [magnitude (Poly x `at` j) | j <- prevRoots] > eps = durandKernerMethod' (Poly x) eps (steps - 1) (step (Poly x) prevRoots)
+    | otherwise = prevRoots
 
 step :: Func -> [Root] -> [Root]
 step (Poly x) prevRoots = newP (Poly x) prevRoots []
 
 newP :: Func -> [Root] -> [Root] -> [Root]
-newP (Poly x) [] lst1 = lst1
-newP (Poly x) lst [] =  newP (Poly x) (tail lst) 
-    [head lst - (Poly x `at` head lst) / foldr (\p acc -> (head lst - p) * acc) 1 (tail lst)]
-newP (Poly x) lst lst1 = newP (Poly x) (tail lst) 
-    [head lst - (Poly x `at` head lst) / 
-    (foldr (\p acc -> (head lst - p) * acc) 1 lst1 * foldr (\p acc -> (head lst - p) * acc) 1 (tail lst))] ++ lst1
+newP (Poly x) [] newLst = reverse newLst
+newP (Poly x) [lastP] newLst = reverse $ lastP - (Poly x `at` lastP) / foldr (\p acc -> acc * (lastP - p)) 1 newLst : newLst
+newP (Poly x) oldLst newLst = newP (Poly x) (tail oldLst) 
+    $ head oldLst - (Poly x `at` head oldLst) / (foldr (\p acc -> acc * (head oldLst - p)) 1 newLst 
+    * foldr (\p acc -> acc * (head oldLst - p)) 1 (tail oldLst)) : newLst
 
 -- Simplify block
 simplify :: [String] -> [Member]

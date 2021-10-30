@@ -11,11 +11,13 @@ module Equations
 , toFunc
 , at
 , polySolver
+, funcPars
+, binomialExpansion
 ) where
 
 import Base (evaluator)
 import Data.List.Split.Internals (split, oneOf, dropDelims, keepDelimsL, dropInitBlank, onSublist, condense)
-import Data.List (sortBy, elemIndex, takeWhile, dropWhile, groupBy, sort)
+import Data.List (sortBy, elemIndex, takeWhile, dropWhile, groupBy, sort, scanl1, isInfixOf)
 import Data.Char(isDigit)
 import Data.Function(on)
 import Data.Complex
@@ -66,8 +68,8 @@ step (Poly x) prevRoots = newP (Poly x) prevRoots []
 newP :: Func -> [Root] -> [Root] -> [Root]
 newP (Poly x) [] newLst = reverse newLst
 newP (Poly x) [lastP] newLst = reverse $ lastP - (Poly x `at` lastP) / foldr (\p acc -> acc * (lastP - p)) 1 newLst : newLst
-newP (Poly x) oldLst newLst = newP (Poly x) (tail oldLst) 
-    $ head oldLst - (Poly x `at` head oldLst) / (foldr (\p acc -> acc * (head oldLst - p)) 1 newLst 
+newP (Poly x) oldLst newLst = newP (Poly x) (tail oldLst)
+    $ head oldLst - (Poly x `at` head oldLst) / (foldr (\p acc -> acc * (head oldLst - p)) 1 newLst
     * foldr (\p acc -> acc * (head oldLst - p)) 1 (tail oldLst)) : newLst
 
 -- Simplify block
@@ -102,10 +104,31 @@ linearEqPars = concat . minusToSecond . map funcPars . split (dropDelims . onSub
           minus str = '-' : tail str
 
 funcPars :: String -> [String]
-funcPars = sortBy comp . split' [] . firstSign . filter (/= ' ') where
+funcPars = sortBy comp. split' [] . firstSign . filter (/= ' ') where
+    binom str -- Implement it somehow in funcPars. Problem: binom returns [String] instead of received String. 
+        | str !! 2 == '(' && ")^" `isInfixOf` str = 
+            map(\x -> signCalc (head x) ((toSign . head . takeWhile (/='(')) str) : takeWhile (/='(') str ++ tail x) 
+                $binomialExpansion ((takeWhile (/=')') . tail . dropWhile (/='(')) str) (read . takeWhile (/= '^') $ reverse str)
+    toSign numb
+        | numb == '-' = '-'
+        | otherwise = '+'
+    signCalc s1 s2
+        | s1 == s2 = '+'
+        | otherwise = '-'
     firstSign str
         | (head str /= '-') && (head str /= '+') = '+' : str
         | otherwise = str
+
+pascals :: [[Integer]]
+pascals = [1] : map (\xs -> zipWith (+) (0 : xs) (xs ++ [0])) pascals
+
+binomialExpansion :: String -> Int -> [String]
+binomialExpansion str pow = [ show (minusOrPlus ^ i * psRow !! i)  ++ "*(" ++ last args ++ "^" ++ show i ++ ")*" ++ head args ++ "^" ++ show (pow - i)| i <- [0..pow]]
+    where args = split(oneOf "+-") str
+          psRow = pascals !! pow
+          minusOrPlus 
+                    | '-' `elem` str = -1
+                    |otherwise = 1
 
 split' :: [String]  -> String -> [String]
 split' [] str
